@@ -75,6 +75,8 @@ static void ExtractFile(Path &localp, hfsvol *vol, const hfsdirent &ent)
     file.creation_date = ent.crdate;
     file.modif_date = ent.mddate;
 
+    LogDebug("Filename: %s, T: %d, C: %d", file.filename.c_str(), file.type, file.creator);
+
     // Extract the two forks.
     hfsfile *hfile = hfs_open(vol, ent.name);
     ExtractFork(hfile, ent, file, false);
