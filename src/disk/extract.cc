@@ -75,7 +75,20 @@ static void ExtractFile(Path &localp, hfsvol *vol, const hfsdirent &ent)
     file.creation_date = ent.crdate;
     file.modif_date = ent.mddate;
 
-    LogDebug("Filename: %s, T: %d, C: %d", file.filename.c_str(), file.type, file.creator);
+    LogDebug("Filename: %s", file.filename.c_str());
+    unsigned char bytes[4];
+    bytes[0] = (file.type >> 24) & 0xFF;
+    bytes[1] = (file.type >> 16) & 0xFF;
+    bytes[2] = (file.type >> 8) & 0xFF;
+    bytes[3] = file.type & 0xFF;
+    LogDebug(", Type: %c%c%c%c (%x %x %x %x)", bytes[0], bytes[1], bytes[2], bytes[3], bytes[0], bytes[1], bytes[2], bytes[3]);
+    bytes[0] = (file.creator >> 24) & 0xFF;
+    bytes[1] = (file.creator >> 16) & 0xFF;
+    bytes[2] = (file.creator >> 8) & 0xFF;
+    bytes[3] = file.creator & 0xFF;
+    LogDebug(", Creator: %c%c%c%c (%x %x %x %x)\n", bytes[0], bytes[1], bytes[2], bytes[3], bytes[0], bytes[1], bytes[2], bytes[3]);
+    LogDebug("---\n");
+
 
     // Extract the two forks.
     hfsfile *hfile = hfs_open(vol, ent.name);

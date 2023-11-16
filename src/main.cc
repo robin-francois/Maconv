@@ -41,7 +41,6 @@ extern "C" void LogDebug(const char *fmt, ...)
 
     vprintf(fmt, args);
     va_end(args);
-    printf("\n");
 }
 
 
