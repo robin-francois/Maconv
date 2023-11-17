@@ -64,7 +64,7 @@ extern "C" void StopOnError(const char *fmt, ...)
 int main(int argc, char **argv)
 {
     // Create the base command.
-    CLI::App app {"Maconv: Macintosh format converter v1.01"};
+    CLI::App app {"Maconv: Macintosh format converter v1.02"};
     app.require_subcommand();
 
     app.add_flag("-v,--verbose", verbose, "Enable verbose mode");

@@ -28,6 +28,11 @@ this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <path.hpp>
 #include <cstdio>
 
+#include <vector>
+#include <string>
+
+using namespace std;
+
 namespace maconv {
 namespace disk {
 
@@ -75,17 +80,22 @@ static void ExtractFile(Path &localp, hfsvol *vol, const hfsdirent &ent)
     file.creation_date = ent.crdate;
     file.modif_date = ent.mddate;
 
-    LogDebug("Filename: %s", file.filename.c_str());
+    LogDebug("[DEBUG] Filename: %s", file.filename.c_str());
     unsigned char bytes[4];
     bytes[0] = (file.type >> 24) & 0xFF;
     bytes[1] = (file.type >> 16) & 0xFF;
     bytes[2] = (file.type >> 8) & 0xFF;
     bytes[3] = file.type & 0xFF;
+    vector<uint8_t> typeBytes = {bytes[0], bytes[1], bytes[2], bytes[3]};
+    string typeString(typeBytes.begin(), typeBytes.end());
     LogDebug(", Type: %c%c%c%c (%x %x %x %x)", bytes[0], bytes[1], bytes[2], bytes[3], bytes[0], bytes[1], bytes[2], bytes[3]);
     bytes[0] = (file.creator >> 24) & 0xFF;
     bytes[1] = (file.creator >> 16) & 0xFF;
     bytes[2] = (file.creator >> 8) & 0xFF;
     bytes[3] = file.creator & 0xFF;
+    vector<uint8_t> creatorBytes = {bytes[0], bytes[1], bytes[2], bytes[3]};
+    string creatorString(creatorBytes.begin(), creatorBytes.end());
+
     LogDebug(", Creator: %c%c%c%c (%x %x %x %x)\n", bytes[0], bytes[1], bytes[2], bytes[3], bytes[0], bytes[1], bytes[2], bytes[3]);
     LogDebug("---\n");
 
@@ -97,7 +107,7 @@ static void ExtractFile(Path &localp, hfsvol *vol, const hfsdirent &ent)
     hfs_close(hfile);
 
     // Save the file.
-    auto out = Path::join(localp, GetFilenameFor(ent.name, prefered_conv));
+    auto out = Path::join(localp, GetFilenameFor(ent.name, prefered_conv)+"!"+typeString+"!"+creatorString);
     PackLocalFile(file, out.string(), prefered_conv);
 }
 
