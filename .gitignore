@@ -1,8 +1,11 @@
 /build/
 vendors/libhfs/config.h
 *.a
+*.bin
+*.img
+*.cue
+*.aaru
 maconv
-
 Makefile
 CMakeCache.txt
 CMakeFiles/
