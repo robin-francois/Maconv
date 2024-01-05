@@ -43,7 +43,7 @@ def siegfried(filepath):
 # Loading resource files
 
 # Loading TCDB into pandas
-tcdb_path = 'TCDB_2003.8_data_utf8.csv'
+tcdb_path = 'updated_TCDB.csv'
 
 tcdbData = pandas.read_csv(tcdb_path, sep=";")
 
