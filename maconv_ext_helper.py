@@ -3,6 +3,7 @@
 import re
 import sys, os
 import subprocess
+import pathlib
 import json
 import pandas
 from rich import print
@@ -47,34 +48,59 @@ tcdb_path = 'updated_TCDB.csv'
 
 tcdbData = pandas.read_csv(tcdb_path, sep=";")
 
+# 3 potential sources of extensions
+# 1 - Existing extension, but might be wrong
+# 2 - Siegfried, most certainly the most precise and trustworthly
+# 3 - TCDB, based on MacOS Type and Creator, might be wrong
+
+
 # Part 1 - get through file tree
 # Possible issue: maconv extracts files with Mac Roman encoding, without converting it, which is not UTF-8
 # You could use `convmv --nosmart -f MacRoman -t utf8 -r --preserve-mtimes /folder` to solve the problem
 path = sys.argv[1]
 for filepath in list_files(path):
+    existingExtension=''
+    sfPUID = 'UNKNOWN'
+    finalExt = ''
+    tcdbExtension = ''
+    sfExtensions = ''
+
     filename = os.path.basename(filepath)
     
+    # TODO - Check if already existing extension
+    # We might want to keep the existing? Or check consistency with the other information sources (SF, TCDB).
+
     # Part 2 - get, for each file, the type and creator
     fileName, fileType, fileCreator, fileResidualExt = parse_filename(filename)
-    print(fileName, fileType, fileCreator, fileResidualExt)
+    print(filename)
     print("# INFO - Name: ^[bold]"+str(fileName)+"[/bold]$ (length "+str(len(fileName))+")")
     print("# INFO - Type ^[bold]"+str(fileType)+"[/bold]$")
     print("# INFO - Creator ^[bold]"+str(fileCreator)+"[/bold]$") 
+
+    # Check if already existing extension
+    # We might want to keep the existing? Or check consistency with the other information sources (SF, TCDB).
+    existingExt = pathlib.Path(fileName).suffix
+    print("# INFO - Existing ext: ", existingExt)
+
 
     # Call siegfried
     sfJson = siegfried(filepath)
     sfData = json.loads(sfJson)
     #print(sfData)
-    sfId = sfData["files"][0]["matches"][0]["id"]
+    sfPUID = sfData["files"][0]["matches"][0]["id"]
     
 
     # Part 3 - First, check if file matches siegfried signature and get "normal" extension
-    if sfId != "UNKNOWN":
+    if sfPUID != "UNKNOWN":
         # Part 3 - Matching in siegfried
-        print("# INFO - Siegfried ID: "+sfId)
+        print("# INFO - Siegfried Pronom Unique ID (PUID): "+sfPUID)
         
-        # TODO - Get extension from pronom JSON?
+        # Get extension from pronom JSON?
+        with open("pronom_v111.json", "r") as f:
+            pronom_data = json.load(f)
 
+        sfExtensions = pronom_data[sfPUID]["file_extensions"]
+        print("# INFO - Extensions: ", sfExtensions)
         # Part 3b - Add type,creator and extension from siegfried to database
 
     else:
@@ -83,10 +109,36 @@ for filepath in list_files(path):
 
     df = tcdbData[tcdbData['Type'].str.contains(fileType) & tcdbData['Creator'].str.contains(fileCreator)]
     if not df.empty:
-        print(df)
+        print("# DEBUG - TCDB entries")
+        print(df.to_string(header=False))
+        tcdbExtension = df.iloc[0]['Extension']
+        print("# INFO - TCDB extension: ",df.iloc[0]['Extension'])
     else:
         print("# INFO - No match in TCDB")
 
-    # Part 5 - Rename file with proper extension if possible
-    # Part 5b - If no extension, keep type as extension
+
+
+    # Part 5 - Confront all extension information and choose
+    # If no extension at all, put MacOS type lowercased as extension
+
+    if sfPUID != "UNKNOWN" and sfExtensions:
+        winner="SF"
+        finalExt = sfExtensions[0]
+    
+    elif tcdbExtension:
+        winner="TCDB"
+        finalExt = tcdbExtension
+    
+    elif existingExtension:
+        winner="Existing"
+        finalExt = existingExtension
+
+    else:
+        winner="Type"
+        finalExt = fileType.lower() 
+
+    print("Final extension ("+winner+"): [red]"+finalExt+"[/red]")
+
+    # Part 6 - Rename file with proper extension if possible
+    # Do not forget residual ext (usually .rsrc for resource files)
     print("------")
