@@ -9,12 +9,14 @@ import pandas
 from rich import print
 
 def parse_filename(filename):
-    regex = r"(?P<orig_filename>.*)!(?P<type>[^!]{3,})!(?P<creator>[^!]{3,})(?P<residual_ext>.*)"
+    regex = r"(?P<orig_filename>.*)!(?P<type>[^!]{3,})!(?P<creator>[^!]{3,4})(?P<residual_ext>\.rsrc)?"
     match = re.search(regex, filename)
     fileName = match.groupdict()['orig_filename']
     fileType = match.groupdict()['type']
     fileCreator = match.groupdict()['creator']
     fileResidualExt = match.groupdict()['residual_ext']
+    if not fileResidualExt:
+        fileResidualExt = ""
     return fileName, fileType, fileCreator, fileResidualExt
 
 def list_files(start_path):
@@ -73,12 +75,15 @@ for filepath in list_files(path):
     # We might want to keep the existing? Or check consistency with the other information sources (SF, TCDB).
 
     # Part 2 - get, for each file, the type and creator
-    fileName, fileType, fileCreator, fileResidualExt = parse_filename(filename)
-    print(filename)
-    print("# INFO - Name: ^[bold]"+str(fileName)+"[/bold]$ (length "+str(len(fileName))+")")
-    print("# INFO - Type ^[bold]"+str(fileType)+"[/bold]$")
-    print("# INFO - Creator ^[bold]"+str(fileCreator)+"[/bold]$") 
-    print("# INFO - ResidualExt ^[bold]"+str(fileResidualExt)+"[/bold]$")
+    try:
+        fileName, fileType, fileCreator, fileResidualExt = parse_filename(filename)
+        print(filename)
+        print("# INFO - Name: ^[bold]"+str(fileName)+"[/bold]$ (length "+str(len(fileName))+")")
+        print("# INFO - Type ^[bold]"+str(fileType)+"[/bold]$")
+        print("# INFO - Creator ^[bold]"+str(fileCreator)+"[/bold]$") 
+        print("# INFO - ResidualExt ^[bold]"+str(fileResidualExt)+"[/bold]$")
+    except:
+        continue
 
     # Check if already existing extension
     # We might want to keep the existing? Or check consistency with the other information sources (SF, TCDB).
@@ -110,16 +115,18 @@ for filepath in list_files(path):
         # Part 4 - If no match, search TCDB for type and creator, and existing matching extension
         print("# INFO - Unknown to Siegfried")
 
-    df = tcdbData[tcdbData['Type'].str.contains(fileType) & tcdbData['Creator'].str.contains(fileCreator)]
-    if not df.empty:
-        print("# DEBUG - TCDB entries")
-        print(df.to_string(header=False))
-        tcdbExtension = df.iloc[0]['Extension']
-        print("# INFO - TCDB extension: ",df.iloc[0]['Extension'])
-    else:
-        print("# INFO - No match in TCDB")
+    try:
+        df = tcdbData[tcdbData['Type'].str.contains(fileType) & tcdbData['Creator'].str.contains(fileCreator)]
+        if not df.empty:
+            print("# DEBUG - TCDB entries")
+            print(df.to_string(header=False))
+            tcdbExtension = str(df.iloc[0]['Extension']).strip()
+            print("# INFO - TCDB extension: ^"+tcdbExtension+"$")
+        else:
+            print("# INFO - No match in TCDB")
 
-
+    except:
+        print("Error")
 
     # Part 5 - Confront all extension information and choose
     # If no extension at all, put MacOS type lowercased as extension
@@ -129,7 +136,7 @@ for filepath in list_files(path):
         winner="SF"
         finalExt = "."+str(sfExtensions[0])
   
-    elif tcdbExtension and "nan" not in str(tcdbExtension):
+    elif len(str(tcdbExtension))>0 and "nan" not in str(tcdbExtension):
         winner="TCDB"
         finalExt = "."+str(tcdbExtension)
     
@@ -141,7 +148,9 @@ for filepath in list_files(path):
         winner="Type"
         finalExt = "."+str(fileType.lower())
 
-
+    if fileType == "APPL" and winner=='TCDB':
+        winner="APPL"
+        finalExt = ""
 
     print("Final extension ("+winner+"): [red]"+finalExt+"[/red]")
 
@@ -150,7 +159,7 @@ for filepath in list_files(path):
     parentDir = os.path.dirname(filepath)
     fileNoExt = os.path.splitext(fileName)[0]
     print(fileResidualExt)
-    print("mv "+filepath+" "+parentDir+"/"+fileNoExt+finalExt+fileResidualExt)
-
+    print("mv '"+filepath+"' '"+parentDir+"/"+fileName+finalExt+fileResidualExt+"'")
+    os.rename(filepath, parentDir+"/"+fileNoExt+finalExt+fileResidualExt)
 
     print("------")
