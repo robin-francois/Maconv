@@ -9,7 +9,7 @@ import pandas
 from rich import print
 
 def parse_filename(filename):
-    regex = r"(?P<orig_filename>.*)!(?P<type>[^!]{4})!(?P<creator>[^!]{4})(?P<residual_ext>.*)"
+    regex = r"(?P<orig_filename>.*)!(?P<type>[^!]{3,})!(?P<creator>[^!]{3,})(?P<residual_ext>.*)"
     match = re.search(regex, filename)
     fileName = match.groupdict()['orig_filename']
     fileType = match.groupdict()['type']
@@ -59,7 +59,7 @@ tcdbData = pandas.read_csv(tcdb_path, sep=";")
 # You could use `convmv --nosmart -f MacRoman -t utf8 -r --preserve-mtimes /folder` to solve the problem
 path = sys.argv[1]
 for filepath in list_files(path):
-    existingExtension=''
+    existingExt=''
     sfPUID = 'UNKNOWN'
     finalExt = ''
     tcdbExtension = ''
@@ -67,6 +67,8 @@ for filepath in list_files(path):
 
     filename = os.path.basename(filepath)
     
+    print(filepath)
+        
     # TODO - Check if already existing extension
     # We might want to keep the existing? Or check consistency with the other information sources (SF, TCDB).
 
@@ -76,6 +78,7 @@ for filepath in list_files(path):
     print("# INFO - Name: ^[bold]"+str(fileName)+"[/bold]$ (length "+str(len(fileName))+")")
     print("# INFO - Type ^[bold]"+str(fileType)+"[/bold]$")
     print("# INFO - Creator ^[bold]"+str(fileCreator)+"[/bold]$") 
+    print("# INFO - ResidualExt ^[bold]"+str(fileResidualExt)+"[/bold]$")
 
     # Check if already existing extension
     # We might want to keep the existing? Or check consistency with the other information sources (SF, TCDB).
@@ -121,24 +124,33 @@ for filepath in list_files(path):
     # Part 5 - Confront all extension information and choose
     # If no extension at all, put MacOS type lowercased as extension
 
+    winner = ""
     if sfPUID != "UNKNOWN" and sfExtensions:
         winner="SF"
-        finalExt = sfExtensions[0]
-    
-    elif tcdbExtension:
+        finalExt = "."+str(sfExtensions[0])
+  
+    elif tcdbExtension and "nan" not in str(tcdbExtension):
         winner="TCDB"
-        finalExt = tcdbExtension
+        finalExt = "."+str(tcdbExtension)
     
-    elif existingExtension:
+    elif existingExt:
         winner="Existing"
-        finalExt = existingExtension
+        finalExt = str(existingExt)
 
-    else:
+    elif not winner:
         winner="Type"
-        finalExt = fileType.lower() 
+        finalExt = "."+str(fileType.lower())
+
+
 
     print("Final extension ("+winner+"): [red]"+finalExt+"[/red]")
 
     # Part 6 - Rename file with proper extension if possible
     # Do not forget residual ext (usually .rsrc for resource files)
+    parentDir = os.path.dirname(filepath)
+    fileNoExt = os.path.splitext(fileName)[0]
+    print(fileResidualExt)
+    print("mv "+filepath+" "+parentDir+"/"+fileNoExt+finalExt+fileResidualExt)
+
+
     print("------")
